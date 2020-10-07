@@ -11,13 +11,14 @@ import kotlinx.coroutines.withContext
 import java.util.concurrent.CompletableFuture
 
 class MainActivity : AppCompatActivity() {
+    private lateinit var a: AutoBahnImpl
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
         GlobalScope.launch {
             withContext(Dispatchers.IO){
-                val a = AutoBahnImpl()
+                a = AutoBahnImpl()
                 a.connect("wss://staging-webservice.supportgenie.io/ws")
             }
         }
