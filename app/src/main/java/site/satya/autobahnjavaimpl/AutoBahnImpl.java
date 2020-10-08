@@ -3,11 +3,13 @@ package site.satya.autobahnjavaimpl;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.logging.Logger;
 import io.crossbar.autobahn.wamp.Client;
 import io.crossbar.autobahn.wamp.Session;
 import io.crossbar.autobahn.wamp.types.CloseDetails;
+import io.crossbar.autobahn.wamp.types.EventDetails;
 import io.crossbar.autobahn.wamp.types.Publication;
 import io.crossbar.autobahn.wamp.types.SessionDetails;
 import io.crossbar.autobahn.wamp.types.Subscription;
@@ -15,10 +17,11 @@ import io.crossbar.autobahn.wamp.types.Subscription;
 public class AutoBahnImpl {
 
     private static final Logger LOGGER = Logger.getLogger("PubSub");
+    private Client client;
 
     public void connect(String url){
 
-        //Setting session
+        //Creating session
         Session session = new Session();
 
         //session callbacks
@@ -29,14 +32,8 @@ public class AutoBahnImpl {
         session.addOnDisconnectListener(this::onDisconnectCallback);
 
         //Pubsub Client with session, url and realm
-        Client client = new Client(session, url, "realm1");
-        client.connect().whenComplete((exitInfo, throwable) -> {
-            if(throwable!= null){
-                throwable.printStackTrace();
-            }else {
-                LOGGER.info("exitCode: "+exitInfo.code);
-            }
-        });
+        client = new Client(session, url, "realm1");
+        client.connect();
     }
 
     private void onJoinCallback(Session session, SessionDetails sessionDetails) {
@@ -46,31 +43,30 @@ public class AutoBahnImpl {
         ICounterSubscriber subscriber = new ICounterSubscriber() {
 
             @Override
-            public void agentStatusEvent(int counter) {
-                LOGGER.info(String.format("oncounter event, counter value=%s", counter));
-
+            public void agentStatusEvent(List<Object> args, Map<String, Object> kwargs, EventDetails details) {
+                LOGGER.info(String.format("oncounter event, counter value=%s", kwargs.toString()));
             }
 
             @Override
-            public void agentUpdateEvent(int counter) {
-                LOGGER.info(String.format("oncounter event, counter value=%s", counter));
-
+            public void agentUpdateEvent(List<Object> args, Map<String, Object> kwargs, EventDetails details) {
+                LOGGER.info(String.format("oncounter event, counter value=%s", kwargs.toString()));
             }
 
             @Override
-            public void webrtcEvent(int counter) {
-                LOGGER.info(String.format("oncounter event, counter value=%s", counter));
-
+            public void webrtcEvent(List<Object> args, Map<String, Object> kwargs, EventDetails details) {
+                LOGGER.info(String.format("oncounter event, counter value=%s", kwargs.toString()));
             }
         };
 
         List<CompletableFuture<Subscription>> subFuture = session.getReflectionServices().registerSubscriber(subscriber);
 
         subFuture.forEach(subscriptionCompletableFuture -> {
-            subscriptionCompletableFuture.thenAccept(subscription ->
-                    LOGGER.info(String.format("Subscribed to topic: %s", subscription.topic)));
+            subscriptionCompletableFuture.whenComplete((subscription, throwable) -> {
+                if(throwable == null){
+                    LOGGER.info(String.format("Subscribed to topic: %s", subscription.topic));
+                }
+            });
         });
-
 
         //subFuture.get(0).thenAccept(subscription -> LOGGER.info(String.format("Subscribed to topic: %s", subscription.topic)));
     }
